@@ -13,8 +13,10 @@
     "test": "pnpm --filter @web3homeoffice/web test",
     "smoke": "pnpm --filter @web3homeoffice/web test:smoke && pnpm -r typecheck",
     "cf:web:build": "pnpm --filter @web3homeoffice/web run cf:build",
+    "cf:web:build:ci": "pnpm install --frozen-lockfile && pnpm --filter @web3homeoffice/web run cf:build",
     "cf:web:preview": "pnpm --filter @web3homeoffice/web run cf:preview",
     "cf:web:deploy": "pnpm --filter @web3homeoffice/web run cf:deploy",
+    "cf:web:deploy:ci": "pnpm install --frozen-lockfile && pnpm --filter @web3homeoffice/web run cf:deploy",
     "cf:web:typegen": "pnpm --filter @web3homeoffice/web run cf:typegen"
   }
 }
