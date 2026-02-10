@@ -1,0 +1,22 @@
+{
+  "name": "web3homeoffice",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.29.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @web3homeoffice/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @web3homeoffice/web test",
+    "smoke": "pnpm --filter @web3homeoffice/web test:smoke && pnpm -r typecheck",
+    "cf:web:build": "pnpm --filter @web3homeoffice/web run cf:build",
+    "cf:web:preview": "pnpm --filter @web3homeoffice/web run cf:preview",
+    "cf:web:deploy": "pnpm --filter @web3homeoffice/web run cf:deploy",
+    "cf:web:typegen": "pnpm --filter @web3homeoffice/web run cf:typegen"
+  }
+}
+
+

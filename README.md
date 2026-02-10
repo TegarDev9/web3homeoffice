@@ -1,2 +1,233 @@
-# web3homeoffice
-web3homeoffice
+# Web3 Home Office
+
+Production-oriented monorepo for a **Next.js App Router SaaS** with:
+
+- Neon cyberpunk UI (shadcn/ui + Tailwind v4 + lucide-react)
+- 3D Office Hub (`three.js` via `@react-three/fiber` + `@react-three/drei`)
+- Supabase auth (email OTP) + Postgres + RLS
+- Creem subscriptions (checkout + webhook + portal fallback)
+- Tencent Cloud provisioning queue (Supabase jobs + external worker)
+- Mini app adapters (Telegram, Farcaster, Base)
+
+## Monorepo structure
+
+```text
+apps/web          # Next.js app (Cloudflare Workers via OpenNext)
+apps/provisioner  # Node worker (deploy on Tencent VM)
+packages/shared   # shared plan/types/zod schemas
+```
+
+## Prerequisites
+
+- Node.js 22+
+- pnpm 10+
+- Supabase project
+- Creem account + webhook secret
+- Tencent Cloud sub-account keys (least privilege)
+
+## Setup
+
+1. Install dependencies:
+
+```bash
+pnpm install
+```
+
+2. Copy env template and fill values:
+
+```bash
+cp .env.example .env
+```
+
+3. Run Supabase SQL migrations from `apps/web/supabase/migrations` in order `0001` -> `0007`.
+
+4. Start local web app:
+
+```bash
+pnpm dev
+```
+
+Web app runs on `http://localhost:3000`.
+
+## Environment variables
+
+### Web app (`apps/web`)
+
+- `NEXT_PUBLIC_APP_URL` (example: `http://localhost:3000`)
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ADMIN_BOOTSTRAP_EMAILS` (comma-separated emails)
+- `SUPPORT_EMAIL` (displayed in billing fallback when portal is unavailable)
+- `ACADEMY_EVM_ENABLED` (`false` by default; toggles EVM demo hooks for academy tools)
+- `CREEM_API_KEY`
+- `CREEM_WEBHOOK_SECRET`
+- `CREEM_MODE` (`test` or `live`)
+- `CREEM_API_BASE_TEST` (optional override)
+- `CREEM_API_BASE_LIVE` (optional override)
+- `CREEM_WEBHOOK_SIGNATURE_HEADER` (default `x-creem-signature`)
+- `CREEM_WEBHOOK_SIGNATURE_ALGORITHM` (default `sha256`)
+- `TELEGRAM_BOT_TOKEN` (optional, needed for Telegram verify route)
+
+### Provisioner worker (`apps/provisioner`)
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `POLL_INTERVAL_MS` (default `10000`)
+- `WORKER_BATCH_SIZE` (default `3`)
+- `TENCENT_SECRET_ID`
+- `TENCENT_SECRET_KEY`
+- `TENCENT_REGION` (default `ap-singapore`)
+- `LIGHTHOUSE_BUNDLE_ID`
+- `LIGHTHOUSE_BLUEPRINT_ID`
+- `LIGHTHOUSE_ZONE`
+- `LIGHTHOUSE_INSTANCE_TYPE`
+
+## Creem integration
+
+- Checkout endpoint: `POST /api/billing/checkout`
+- Webhook endpoint: `POST /api/billing/webhook`
+- Portal endpoint: `POST /api/billing/portal`
+- Cancellation request endpoint: `POST /api/billing/cancel-request`
+- Academy rooms endpoint: `GET /api/academy/rooms`
+- Academy room detail endpoint: `GET /api/academy/rooms/:roomId`
+- Academy progress endpoints: `GET/POST /api/academy/progress`
+- Academy tool launch endpoint: `POST /api/academy/tools/:toolId/launch`
+
+### Webhook setup
+
+1. Configure Creem webhook to point to:
+   - `https://<your-domain>/api/billing/webhook`
+2. Set `CREEM_WEBHOOK_SECRET` and header/algo env vars.
+3. Keep webhook verification fail-closed (already implemented).
+
+## Provisioning architecture
+
+1. User requests provision (`POST /api/provision/request`).
+2. App inserts `provision_jobs` row with `pending`.
+3. Worker polls `dequeue_provision_jobs()`.
+4. Worker calls Tencent Lighthouse `CreateInstances`.
+5. Worker bootstraps via Tencent TAT command.
+6. On failure worker retries up to 3 times with backoff (1m, 5m, 15m).
+7. Worker updates job (`running -> pending|provisioned|failed`) and appends logs.
+
+## Deploy
+
+### Cloudflare Workers Builds (`apps/web`)
+
+This repo uses `@opennextjs/cloudflare` for Next.js App Router deployment on Cloudflare Workers.
+
+#### 1) Connect repo
+
+- In Cloudflare dashboard, create a **Workers Builds** project from your Git repository.
+- Set **Production branch** (for example `main`).
+- Set **Root directory** to repository root (`.`), not `apps/web`, because `apps/web` imports `packages/shared`.
+
+#### 2) Build + deploy commands
+
+- Build command:
+
+```bash
+pnpm --filter @web3homeoffice/web run cf:build
+```
+
+- Deploy command:
+
+```bash
+pnpm --filter @web3homeoffice/web run cf:deploy
+```
+
+- Recommended Build Watch Paths:
+  - `apps/web/**`
+  - `packages/shared/**`
+  - `pnpm-lock.yaml`
+  - `package.json`
+  - `pnpm-workspace.yaml`
+
+#### 3) Environment variables (Cloudflare)
+
+Add all web env vars in Cloudflare for build/runtime:
+
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ADMIN_BOOTSTRAP_EMAILS`
+- `SUPPORT_EMAIL`
+- `CREEM_API_KEY`
+- `CREEM_WEBHOOK_SECRET`
+- `CREEM_MODE`
+- `CREEM_API_BASE_TEST`
+- `CREEM_API_BASE_LIVE`
+- `CREEM_WEBHOOK_SIGNATURE_HEADER`
+- `CREEM_WEBHOOK_SIGNATURE_ALGORITHM`
+- `TELEGRAM_BOT_TOKEN` (optional)
+
+Keep sensitive values as secrets.
+
+#### 4) Domain + integrations
+
+- Attach your custom domain to the Worker.
+- Set `NEXT_PUBLIC_APP_URL` to the deployed Cloudflare URL/domain.
+- In Supabase Auth, add the Cloudflare domain to allowed site/redirect URLs (`/dashboard` redirect must be allowed).
+- Point Creem webhook to:
+
+```text
+https://<your-domain>/api/billing/webhook
+```
+
+- Ensure webhook signature header/algorithm env values match Creem settings.
+
+#### 5) Local pre-deploy validation
+
+```bash
+pnpm --filter @web3homeoffice/web test
+pnpm --filter @web3homeoffice/web build
+pnpm --filter @web3homeoffice/web run cf:build
+```
+
+### Tencent worker (`apps/provisioner`)
+
+- Deploy on lightweight Tencent VM.
+- Copy provisioner env vars.
+- Run:
+
+```bash
+pnpm install
+pnpm --filter @web3homeoffice/provisioner build
+pnpm --filter @web3homeoffice/provisioner start
+```
+
+- Use systemd/pm2 for process supervision.
+
+## Scripts
+
+- `pnpm dev` - run Next.js app
+- `pnpm build` - build all packages/apps
+- `pnpm typecheck` - typecheck all workspace packages
+- `pnpm test` - run web tests
+- `pnpm smoke` - run smoke test + workspace typecheck
+- `pnpm cf:web:build` - build Cloudflare OpenNext output for `apps/web`
+- `pnpm cf:web:preview` - local Cloudflare preview for `apps/web`
+- `pnpm cf:web:deploy` - deploy `apps/web` Worker using OpenNext CLI
+- `pnpm cf:web:typegen` - generate Cloudflare env type definitions
+
+## Testing
+
+Minimal critical tests are included under `apps/web/src/tests`:
+
+- webhook signature verification
+- webhook payload normalization
+- subscription access guard logic
+- provisioning limit parsing and validation helpers
+- retry backoff policy helpers
+- cancellation request schema validation
+- smoke import test
+
+Run:
+
+```bash
+pnpm smoke
+```
+
+

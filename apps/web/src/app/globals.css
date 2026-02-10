@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+:root {
+  --radius-lg: 0.95rem;
+  --color-bg: #020617;
+  --color-panel: rgba(2, 23, 38, 0.68);
+  --color-border: rgba(127, 159, 190, 0.35);
+  --color-glow: #20d4ff;
+  --color-accent: #20d4ff;
+  --color-accent-2: #ff39b8;
+  --color-text: #e2e8f0;
+  --color-muted: #9aa9bc;
+}
+
+@theme inline {
+  --font-body: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+body {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(0, 194, 255, 0.12), transparent 40%),
+    radial-gradient(circle at 90% 15%, rgba(255, 57, 184, 0.1), transparent 35%),
+    linear-gradient(170deg, #020617 0%, #020b1e 45%, #020617 100%);
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.font-body {
+  font-family: var(--font-body), sans-serif;
+}
+
+.glass {
+  backdrop-filter: blur(12px);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.72), rgba(2, 6, 23, 0.42));
+  border: 1px solid var(--color-border);
+}
+
+.marketing-grid-bg {
+  position: relative;
+}
+
+.marketing-grid-bg::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 20%, black 20%, transparent 80%);
+  opacity: 0.35;
+}
+
+.marketing-section {
+  position: relative;
+}
+
+.marketing-spotlight {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(32, 212, 255, 0.18), transparent 45%),
+    radial-gradient(circle at 82% 24%, rgba(255, 57, 184, 0.14), transparent 38%);
+}
+
+.marketing-card-hover {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.marketing-card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(32, 212, 255, 0.4);
+  box-shadow:
+    0 10px 32px rgba(2, 6, 23, 0.4),
+    0 0 0 1px rgba(32, 212, 255, 0.12);
+}
+
+.safe-area {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+}
+
+.embedded-platform .safe-area-embedded {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .marketing-card-hover,
+  .marketing-card-hover:hover {
+    transform: none;
+    transition: none;
+  }
+}
+
+
