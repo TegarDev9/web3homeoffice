@@ -1,6 +1,15 @@
-import type { BillingInterval, PlanId, SubscriptionStatus } from "@web3homeoffice/shared";
+import type {
+  BillingInterval,
+  PlanId,
+  ProvisionOs,
+  ProvisionTemplate,
+  SubscriptionStatus
+} from "@web3homeoffice/shared";
+import { DEFAULT_PROVISION_OS, DEFAULT_PROVISION_TEMPLATE } from "@web3homeoffice/shared";
 
 import { AppError } from "@/lib/api/errors";
+import { createProvisionJob } from "@/lib/provisioning/jobs";
+import { parsePlanLimits } from "@/lib/provisioning/limits";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { PlanRow } from "@/types/db";
 import type { Database, Json } from "@/types/supabase";
@@ -16,6 +25,15 @@ export type NormalizedCreemEvent = {
   interval: BillingInterval | null;
   planId: PlanId | null;
   raw: unknown;
+};
+
+export const AUTO_INSTALL_ARM_WINDOW_MS = 2 * 60 * 60 * 1000;
+export const AUTO_INSTALL_DEFAULTS: {
+  template: ProvisionTemplate;
+  os: ProvisionOs;
+} = {
+  template: DEFAULT_PROVISION_TEMPLATE,
+  os: DEFAULT_PROVISION_OS
 };
 
 export function normalizeCreemEvent(payload: unknown): NormalizedCreemEvent {
@@ -92,6 +110,123 @@ export async function recordWebhookEvent(event: NormalizedCreemEvent) {
   throw new AppError(error.message, 500, "WEBHOOK_EVENT_WRITE_FAILED");
 }
 
+export async function armAutoInstallPreference(params: {
+  userId: string;
+  template: ProvisionTemplate;
+  os: ProvisionOs;
+}) {
+  const admin = createSupabaseAdminClient();
+  const now = new Date();
+  const armExpiresAt = new Date(now.getTime() + AUTO_INSTALL_ARM_WINDOW_MS).toISOString();
+
+  const payload: Database["public"]["Tables"]["auto_install_preferences"]["Insert"] = {
+    user_id: params.userId,
+    template: params.template,
+    target_os: params.os,
+    auto_install_armed: true,
+    arm_expires_at: armExpiresAt,
+    last_checkout_at: now.toISOString(),
+    last_triggered_at: null
+  };
+
+  const { error } = await admin
+    .from("auto_install_preferences")
+    .upsert(payload, { onConflict: "user_id" });
+
+  if (error) {
+    throw new AppError(error.message, 500, "AUTO_INSTALL_PREFERENCE_UPSERT_FAILED");
+  }
+
+  return {
+    armExpiresAt,
+    template: params.template,
+    os: params.os
+  };
+}
+
+async function getAutoInstallPreference(userId: string) {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from("auto_install_preferences")
+    .select(
+      "user_id,template,target_os,auto_install_armed,arm_expires_at,last_checkout_at,last_triggered_at,created_at,updated_at"
+    )
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(error.message, 500, "AUTO_INSTALL_PREFERENCE_READ_FAILED");
+  }
+
+  return data;
+}
+
+async function disarmAutoInstallPreference(userId: string, triggered: boolean) {
+  const admin = createSupabaseAdminClient();
+  const now = new Date().toISOString();
+
+  const payload: Database["public"]["Tables"]["auto_install_preferences"]["Update"] = {
+    auto_install_armed: false,
+    arm_expires_at: null,
+    last_triggered_at: triggered ? now : undefined
+  };
+
+  const { error } = await admin.from("auto_install_preferences").update(payload).eq("user_id", userId);
+
+  if (error) {
+    throw new AppError(error.message, 500, "AUTO_INSTALL_PREFERENCE_UPDATE_FAILED");
+  }
+}
+
+export async function maybeQueueAutoProvision(params: {
+  userId: string;
+  event: NormalizedCreemEvent;
+  subscription: Database["public"]["Tables"]["subscriptions"]["Insert"];
+}) {
+  if (params.event.status !== "active") return;
+  if (!params.event.subscriptionId || !params.subscription.plan_id) return;
+
+  const preference = await getAutoInstallPreference(params.userId);
+  if (!preference || !preference.auto_install_armed) return;
+
+  if (preference.arm_expires_at && new Date(preference.arm_expires_at).getTime() < Date.now()) {
+    await disarmAutoInstallPreference(params.userId, false);
+    return;
+  }
+
+  const plan = await getPlanById(params.subscription.plan_id);
+  const limits = parsePlanLimits(plan.limits);
+  const region = limits.regions[0];
+
+  if (!region) {
+    throw new AppError("Plan has no default region for auto install", 500, "PLAN_REGION_MISSING");
+  }
+
+  await createProvisionJob({
+    userId: params.userId,
+    planId: params.subscription.plan_id,
+    template: preference.template,
+    os: preference.target_os,
+    region,
+    requestSource: "subscription_auto",
+    subscriptionId: params.event.subscriptionId,
+    logs: [
+      {
+        ts: new Date().toISOString(),
+        level: "info",
+        message: "Provision job created from subscription activation",
+        requestSource: "subscription_auto",
+        subscriptionId: params.event.subscriptionId,
+        template: preference.template,
+        os: preference.target_os,
+        region
+      }
+    ]
+  });
+
+  await disarmAutoInstallPreference(params.userId, true);
+}
+
 export async function syncSubscriptionFromEvent(event: NormalizedCreemEvent) {
   if (!event.customerEmail) {
     throw new AppError("Webhook payload missing customer email", 400, "WEBHOOK_EMAIL_REQUIRED");
@@ -130,6 +265,12 @@ export async function syncSubscriptionFromEvent(event: NormalizedCreemEvent) {
     throw new AppError(error.message, 500, "SUBSCRIPTION_UPSERT_FAILED");
   }
 
+  await maybeQueueAutoProvision({
+    userId: user.id,
+    event,
+    subscription: payload
+  });
+
   return payload;
 }
 
@@ -154,5 +295,4 @@ export async function getPlanById(planId: PlanId): Promise<PlanRow> {
 export function planPriceId(plan: PlanRow, interval: BillingInterval) {
   return interval === "monthly" ? plan.monthly_price_id : plan.yearly_price_id;
 }
-
 

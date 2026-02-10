@@ -24,6 +24,7 @@ export default async function DashboardPage() {
   await ensureProfileForUser(user);
   const subscription = await requireActiveSubscription(user.id);
   const jobs = await listProvisionJobsForUser(user.id);
+  const latestAutoInstallJob = jobs.find((job) => job.request_source === "subscription_auto");
 
   return (
     <div className="space-y-6">
@@ -33,7 +34,7 @@ export default async function DashboardPage() {
         statusLabel={subscription.status}
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle>Current Plan</CardTitle>
@@ -75,6 +76,26 @@ export default async function DashboardPage() {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Auto Install</CardTitle>
+            <CardDescription>Latest auto-install job from subscription activation.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted">
+            <p>
+              Status:{" "}
+              <span className="font-medium text-text">{latestAutoInstallJob?.status ?? "not started"}</span>
+            </p>
+            <p>
+              Package:{" "}
+              <span className="font-medium text-text">{latestAutoInstallJob?.template ?? "-"}</span>
+            </p>
+            <p>
+              OS: <span className="font-medium text-text">{latestAutoInstallJob?.os ?? "-"}</span>
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <ProvisionRequestForm defaultRegion={DEFAULT_REGION} />
@@ -85,11 +106,13 @@ export default async function DashboardPage() {
           <CardDescription>Queue state from Supabase.</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="text-left text-xs uppercase tracking-[0.1em] text-muted">
               <tr>
                 <th className="pb-2">Job ID</th>
+                <th className="pb-2">Source</th>
                 <th className="pb-2">Status</th>
+                <th className="pb-2">OS</th>
                 <th className="pb-2">Region</th>
                 <th className="pb-2">Instance</th>
                 <th className="pb-2">IP</th>
@@ -100,7 +123,9 @@ export default async function DashboardPage() {
               {jobs.map((job) => (
                 <tr key={job.id} className="border-t border-border/40">
                   <td className="py-2 font-mono text-xs text-text">{job.id}</td>
+                  <td className="py-2">{job.request_source}</td>
                   <td className="py-2">{job.status}</td>
+                  <td className="py-2">{job.os}</td>
                   <td className="py-2">{job.region}</td>
                   <td className="py-2">{job.instance_id ?? "-"}</td>
                   <td className="py-2">{job.ip ?? "-"}</td>
@@ -109,7 +134,7 @@ export default async function DashboardPage() {
               ))}
               {!jobs.length ? (
                 <tr>
-                  <td className="py-4 text-muted" colSpan={6}>
+                  <td className="py-4 text-muted" colSpan={8}>
                     No jobs yet.
                   </td>
                 </tr>

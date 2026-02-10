@@ -1,4 +1,10 @@
-import type { PlanId, ProvisionJobStatus } from "@web3homeoffice/shared";
+import type {
+  PlanId,
+  ProvisionJobStatus,
+  ProvisionOs,
+  ProvisionRequestSource,
+  ProvisionTemplate
+} from "@web3homeoffice/shared";
 
 import { AppError } from "@/lib/api/errors";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -8,17 +14,24 @@ import type { Database, Json } from "@/types/supabase";
 export async function createProvisionJob(params: {
   userId: string;
   planId: PlanId;
-  template: "vps-base" | "rpc-placeholder";
+  template: ProvisionTemplate;
+  os?: ProvisionOs;
   region: string;
   sshPublicKey?: string;
+  requestSource?: ProvisionRequestSource;
+  subscriptionId?: string;
   logs?: Json[];
 }) {
   const admin = createSupabaseAdminClient();
+  const requestSource = params.requestSource ?? "manual";
 
   const payload: Database["public"]["Tables"]["provision_jobs"]["Insert"] = {
     user_id: params.userId,
     plan_id: params.planId,
     template: params.template,
+    os: params.os ?? "ubuntu",
+    request_source: requestSource,
+    subscription_id: params.subscriptionId ?? null,
     status: "pending",
     region: params.region,
     ssh_public_key: params.sshPublicKey ?? null,
@@ -34,6 +47,19 @@ export async function createProvisionJob(params: {
   const data = result.data as { id: string; status: ProvisionJobStatus } | null;
   const error = result.error;
 
+  if (error && error.code === "23505" && requestSource === "subscription_auto" && params.subscriptionId) {
+    const existing = await admin
+      .from("provision_jobs")
+      .select("id,status")
+      .eq("subscription_id", params.subscriptionId)
+      .eq("request_source", "subscription_auto")
+      .maybeSingle();
+
+    if (existing.data) {
+      return existing.data as { id: string; status: ProvisionJobStatus };
+    }
+  }
+
   if (error || !data) {
     throw new AppError(error?.message ?? "Failed to create provision job", 500, "PROVISION_JOB_CREATE_FAILED");
   }
@@ -46,7 +72,7 @@ export async function listProvisionJobsForUser(userId: string) {
   const { data, error } = await admin
     .from("provision_jobs")
     .select(
-      "id,user_id,plan_id,template,status,region,instance_id,ip,retry_count,max_retries,next_retry_at,last_error,ssh_public_key,logs,created_at,updated_at"
+      "id,user_id,plan_id,template,os,request_source,subscription_id,status,region,instance_id,ip,retry_count,max_retries,next_retry_at,last_error,ssh_public_key,logs,created_at,updated_at"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
@@ -64,7 +90,7 @@ export async function listProvisionJobsAdmin(limit = 100) {
   const { data, error } = await admin
     .from("provision_jobs")
     .select(
-      "id,user_id,plan_id,template,status,region,instance_id,ip,retry_count,max_retries,next_retry_at,last_error,ssh_public_key,logs,created_at,updated_at"
+      "id,user_id,plan_id,template,os,request_source,subscription_id,status,region,instance_id,ip,retry_count,max_retries,next_retry_at,last_error,ssh_public_key,logs,created_at,updated_at"
     )
     .order("created_at", { ascending: false })
     .limit(limit)

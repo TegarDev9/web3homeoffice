@@ -8,6 +8,8 @@ export async function processJob(provider: ProvisionProvider, job: ProvisionJob)
   await appendJobLog(job.id, "info", "Starting provisioning workflow", {
     plan: job.plan_id,
     template: job.template,
+    os: job.os,
+    requestSource: job.request_source,
     region: job.region
   });
 

@@ -2,9 +2,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { ProvisionTemplate } from "@web3homeoffice/shared";
+
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
-export function buildBootstrapScript(template: "vps-base" | "rpc-placeholder", options?: { sshPublicKey?: string }) {
+export function buildBootstrapScript(template: ProvisionTemplate, options?: { sshPublicKey?: string }) {
   const basePath = path.resolve(currentDir, "../templates/vps-base.sh");
   const rpcPath = path.resolve(currentDir, "../templates/rpc-placeholder.sh");
 

@@ -4,6 +4,8 @@ import type {
   AcademyRoomId,
   BillingInterval,
   PlanId,
+  ProvisionOs,
+  ProvisionTemplate,
   ProvisionJobStatus
 } from "@web3homeoffice/shared";
 
@@ -12,6 +14,10 @@ export type CheckoutRequest = {
   interval: BillingInterval;
   successPath?: string;
   cancelPath?: string;
+  autoInstall?: {
+    template: ProvisionTemplate;
+    os: ProvisionOs;
+  };
 };
 
 export type CheckoutResponse = {
@@ -29,9 +35,10 @@ export type CancellationRequestPayload = {
 };
 
 export type CreateProvisionJobRequest = {
-  planTemplate: "vps-base" | "rpc-placeholder";
+  planTemplate: ProvisionTemplate;
   region?: string;
   sshPublicKey?: string;
+  os?: ProvisionOs;
 };
 
 export type CreateProvisionJobResponse = {

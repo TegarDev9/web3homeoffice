@@ -28,6 +28,12 @@ type CreateCommandResponse = {
 export class LighthouseProvisionProvider implements ProvisionProvider {
   private readonly env = getEnv();
 
+  private blueprintIdForOs(os: ProvisionJob["os"]) {
+    if (os === "debian") return this.env.LIGHTHOUSE_BLUEPRINT_ID_DEBIAN;
+    if (os === "kali") return this.env.LIGHTHOUSE_BLUEPRINT_ID_KALI;
+    return this.env.LIGHTHOUSE_BLUEPRINT_ID_UBUNTU;
+  }
+
   async createInstance(job: ProvisionJob): Promise<ProvisionResult> {
     const createResponse = await tencentJsonRequest<CreateInstancesResponse>({
       service: "lighthouse",
@@ -37,7 +43,7 @@ export class LighthouseProvisionProvider implements ProvisionProvider {
       region: job.region,
       payload: {
         BundleId: this.env.LIGHTHOUSE_BUNDLE_ID,
-        BlueprintId: this.env.LIGHTHOUSE_BLUEPRINT_ID,
+        BlueprintId: this.blueprintIdForOs(job.os),
         InstanceChargeType: "POSTPAID_BY_HOUR",
         InstanceCount: 1,
         Zone: this.env.LIGHTHOUSE_ZONE,

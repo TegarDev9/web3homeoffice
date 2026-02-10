@@ -20,6 +20,9 @@ pnpm --filter @web3homeoffice/provisioner dev
 - `TENCENT_REGION` (default `ap-singapore`)
 - `LIGHTHOUSE_BUNDLE_ID`
 - `LIGHTHOUSE_BLUEPRINT_ID`
+- `LIGHTHOUSE_BLUEPRINT_ID_UBUNTU` (optional override, defaults to `LIGHTHOUSE_BLUEPRINT_ID`)
+- `LIGHTHOUSE_BLUEPRINT_ID_DEBIAN` (optional override, defaults to `LIGHTHOUSE_BLUEPRINT_ID`)
+- `LIGHTHOUSE_BLUEPRINT_ID_KALI` (optional override, defaults to `LIGHTHOUSE_BLUEPRINT_ID`)
 - `LIGHTHOUSE_ZONE`
 - `LIGHTHOUSE_INSTANCE_TYPE`
 

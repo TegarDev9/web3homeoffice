@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-import type { PlanId, ProvisionJobStatus } from "@web3homeoffice/shared";
+import type {
+  PlanId,
+  ProvisionJobStatus,
+  ProvisionOs,
+  ProvisionRequestSource,
+  ProvisionTemplate
+} from "@web3homeoffice/shared";
 
 import { getEnv } from "./env";
 
@@ -8,7 +14,10 @@ export type ProvisionJob = {
   id: string;
   user_id: string;
   plan_id: PlanId;
-  template: "vps-base" | "rpc-placeholder";
+  template: ProvisionTemplate;
+  os: ProvisionOs;
+  request_source: ProvisionRequestSource;
+  subscription_id: string | null;
   status: ProvisionJobStatus;
   region: string;
   instance_id: string | null;

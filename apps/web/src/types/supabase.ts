@@ -4,6 +4,9 @@ import type {
   AcademyToolCategory,
   BillingInterval,
   PlanId,
+  ProvisionOs,
+  ProvisionRequestSource,
+  ProvisionTemplate,
   ProvisionJobStatus,
   SubscriptionStatus
 } from "@web3homeoffice/shared";
@@ -101,7 +104,10 @@ export type Database = {
           id: string;
           user_id: string;
           plan_id: PlanId;
-          template: "vps-base" | "rpc-placeholder";
+          template: ProvisionTemplate;
+          os: ProvisionOs;
+          request_source: ProvisionRequestSource;
+          subscription_id: string | null;
           status: ProvisionJobStatus;
           region: string;
           instance_id: string | null;
@@ -119,7 +125,10 @@ export type Database = {
           id?: string;
           user_id: string;
           plan_id: PlanId;
-          template: "vps-base" | "rpc-placeholder";
+          template: ProvisionTemplate;
+          os?: ProvisionOs;
+          request_source?: ProvisionRequestSource;
+          subscription_id?: string | null;
           status?: ProvisionJobStatus;
           region: string;
           instance_id?: string | null;
@@ -132,6 +141,9 @@ export type Database = {
           logs?: Json;
         };
         Update: {
+          os?: ProvisionOs;
+          request_source?: ProvisionRequestSource;
+          subscription_id?: string | null;
           status?: ProvisionJobStatus;
           instance_id?: string | null;
           ip?: string | null;
@@ -351,6 +363,38 @@ export type Database = {
         };
         Relationships: [];
       };
+      auto_install_preferences: {
+        Row: {
+          user_id: string;
+          template: ProvisionTemplate;
+          target_os: ProvisionOs;
+          auto_install_armed: boolean;
+          arm_expires_at: string | null;
+          last_checkout_at: string | null;
+          last_triggered_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          template?: ProvisionTemplate;
+          target_os?: ProvisionOs;
+          auto_install_armed?: boolean;
+          arm_expires_at?: string | null;
+          last_checkout_at?: string | null;
+          last_triggered_at?: string | null;
+        };
+        Update: {
+          template?: ProvisionTemplate;
+          target_os?: ProvisionOs;
+          auto_install_armed?: boolean;
+          arm_expires_at?: string | null;
+          last_checkout_at?: string | null;
+          last_triggered_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       platform_accounts: {
         Row: {
           id: string;
@@ -435,6 +479,8 @@ export type Database = {
       subscription_status: SubscriptionStatus;
       billing_interval: BillingInterval;
       provision_job_status: ProvisionJobStatus;
+      provision_os: ProvisionOs;
+      provision_request_source: ProvisionRequestSource;
     };
     CompositeTypes: {
       [_ in never]: never;

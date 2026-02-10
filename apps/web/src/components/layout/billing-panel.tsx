@@ -1,7 +1,14 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { ArrowRight, CreditCard, LoaderCircle, Settings } from "lucide-react";
+
+import {
+  DEFAULT_PROVISION_OS,
+  DEFAULT_PROVISION_TEMPLATE,
+  type ProvisionOs,
+  type ProvisionTemplate
+} from "@web3homeoffice/shared";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +35,23 @@ type BillingPanelProps = {
   supportEmail: string;
 };
 
+export function resolveCheckoutAutoInstallConfig(
+  isDesktopViewport: boolean,
+  selected: {
+    template: ProvisionTemplate;
+    os: ProvisionOs;
+  }
+) {
+  if (!isDesktopViewport) {
+    return {
+      template: DEFAULT_PROVISION_TEMPLATE,
+      os: DEFAULT_PROVISION_OS
+    };
+  }
+
+  return selected;
+}
+
 export function BillingPanel({
   plans,
   activePlanId,
@@ -41,6 +65,10 @@ export function BillingPanel({
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [showCancelRequest, setShowCancelRequest] = useState(false);
+  const [autoInstallTemplate, setAutoInstallTemplate] = useState<ProvisionTemplate>(
+    DEFAULT_PROVISION_TEMPLATE
+  );
+  const [targetOs, setTargetOs] = useState<ProvisionOs>(DEFAULT_PROVISION_OS);
   const [message, setMessage] = useState<string | null>(null);
 
   const sortedPlans = useMemo(
@@ -53,6 +81,13 @@ export function BillingPanel({
     setMessage(null);
 
     try {
+      const isDesktopViewport =
+        typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches;
+      const autoInstall = resolveCheckoutAutoInstallConfig(isDesktopViewport, {
+        template: autoInstallTemplate,
+        os: targetOs
+      });
+
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: {
@@ -62,7 +97,8 @@ export function BillingPanel({
           planId,
           interval,
           successPath: "/billing/success",
-          cancelPath: "/billing"
+          cancelPath: "/billing",
+          autoInstall
         })
       });
 
@@ -164,6 +200,53 @@ export function BillingPanel({
             </Select>
           </div>
 
+          <div className="hidden rounded-md border border-border/60 bg-black/20 p-3 md:block">
+            <p className="text-sm font-medium text-text">Desktop auto-install setup</p>
+            <p className="mt-1 text-xs text-muted">
+              Choose install package and OS before checkout. Auto provisioning starts when webhook status becomes active.
+            </p>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <label htmlFor="auto-template" className="text-xs font-medium uppercase tracking-[0.08em] text-muted">
+                  Install package
+                </label>
+                <Select
+                  value={autoInstallTemplate}
+                  onValueChange={(value) => setAutoInstallTemplate(value as ProvisionTemplate)}
+                >
+                  <SelectTrigger id="auto-template">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vps-base">VPS Base</SelectItem>
+                    <SelectItem value="rpc-placeholder">Server RPC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="auto-os" className="text-xs font-medium uppercase tracking-[0.08em] text-muted">
+                  Target OS
+                </label>
+                <Select value={targetOs} onValueChange={(value) => setTargetOs(value as ProvisionOs)}>
+                  <SelectTrigger id="auto-os">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ubuntu">Ubuntu</SelectItem>
+                    <SelectItem value="debian">Debian</SelectItem>
+                    <SelectItem value="kali">Kali Linux</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted md:hidden">
+            Mobile checkout uses default auto-install: Ubuntu + VPS Base.
+          </p>
+
           <Button variant="secondary" onClick={onManage} disabled={portalBusy}>
             {portalBusy ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Settings className="mr-2 h-4 w-4" />}
             Manage subscription
@@ -226,5 +309,4 @@ export function BillingPanel({
     </div>
   );
 }
-
 

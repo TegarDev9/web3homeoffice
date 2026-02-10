@@ -42,6 +42,14 @@ Tencent Provisioner (apps/provisioner on VM)
 
 `/api/provision/request` only inserts queue jobs. Provision execution remains external (Tencent worker).
 
+With migration `0008_auto_install_subscription.sql`, provisioning jobs also carry:
+
+- `os` (`debian` | `ubuntu` | `kali`)
+- `request_source` (`manual` | `subscription_auto`)
+- `subscription_id` (used for idempotent auto-install on subscription activation)
+
+Auto-install is triggered when webhook status becomes `active`, using desktop-selected (or mobile-default) checkout preferences.
+
 ## 5) Prerequisites
 
 - Cloudflare account with Workers Builds enabled

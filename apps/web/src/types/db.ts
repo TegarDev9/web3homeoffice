@@ -4,6 +4,9 @@ import type {
   AcademyToolCategory,
   BillingInterval,
   PlanId,
+  ProvisionOs,
+  ProvisionRequestSource,
+  ProvisionTemplate,
   ProvisionJobStatus,
   SubscriptionStatus
 } from "@web3homeoffice/shared";
@@ -45,7 +48,10 @@ export type ProvisionJobRow = {
   id: string;
   user_id: string;
   plan_id: PlanId;
-  template: "vps-base" | "rpc-placeholder";
+  template: ProvisionTemplate;
+  os: ProvisionOs;
+  request_source: ProvisionRequestSource;
+  subscription_id: string | null;
   status: ProvisionJobStatus;
   region: string;
   instance_id: string | null;
@@ -56,6 +62,18 @@ export type ProvisionJobRow = {
   last_error: string | null;
   ssh_public_key: string | null;
   logs: Json;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AutoInstallPreferenceRow = {
+  user_id: string;
+  template: ProvisionTemplate;
+  target_os: ProvisionOs;
+  auto_install_armed: boolean;
+  arm_expires_at: string | null;
+  last_checkout_at: string | null;
+  last_triggered_at: string | null;
   created_at: string;
   updated_at: string;
 };

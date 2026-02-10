@@ -1,10 +1,14 @@
 import { NextRequest } from "next/server";
 
-import { checkoutPayloadSchema } from "@web3homeoffice/shared";
+import { DEFAULT_PROVISION_OS, DEFAULT_PROVISION_TEMPLATE, checkoutPayloadSchema } from "@web3homeoffice/shared";
 
 import { requireUser } from "@/lib/auth/session";
 import { createCreemCheckoutSession } from "@/lib/billing/creem-client";
-import { getPlanById, planPriceId } from "@/lib/billing/subscription-service";
+import {
+  armAutoInstallPreference,
+  getPlanById,
+  planPriceId
+} from "@/lib/billing/subscription-service";
 import { fail, ok } from "@/lib/api/responses";
 import { absoluteUrl } from "@/lib/utils";
 
@@ -14,6 +18,10 @@ export async function POST(request: NextRequest) {
     const payload = checkoutPayloadSchema.parse(await request.json());
     const plan = await getPlanById(payload.planId);
     const priceId = planPriceId(plan, payload.interval);
+    const autoInstall = payload.autoInstall ?? {
+      template: DEFAULT_PROVISION_TEMPLATE,
+      os: DEFAULT_PROVISION_OS
+    };
 
     if (!user.email) {
       throw new Error("Authenticated user must have an email");
@@ -21,6 +29,12 @@ export async function POST(request: NextRequest) {
 
     const successUrl = absoluteUrl(payload.successPath ?? "/billing/success");
     const cancelUrl = absoluteUrl(payload.cancelPath ?? "/billing");
+
+    await armAutoInstallPreference({
+      userId: user.id,
+      template: autoInstall.template,
+      os: autoInstall.os
+    });
 
     const checkout = await createCreemCheckoutSession({
       priceId,
@@ -30,7 +44,9 @@ export async function POST(request: NextRequest) {
       metadata: {
         user_id: user.id,
         plan_id: payload.planId,
-        interval: payload.interval
+        interval: payload.interval,
+        auto_install_template: autoInstall.template,
+        auto_install_os: autoInstall.os
       }
     });
 

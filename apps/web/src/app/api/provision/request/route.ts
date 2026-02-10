@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       planId: subscription.plan_id,
       template: payload.planTemplate,
+      os: payload.os,
       region: payload.region,
+      requestSource: "manual",
       sshPublicKey: payload.sshPublicKey,
       logs: [
         {
@@ -37,6 +39,8 @@ export async function POST(request: NextRequest) {
           level: "info",
           message: "Provision job created",
           template: payload.planTemplate,
+          os: payload.os,
+          requestSource: "manual",
           region: payload.region,
           hasSshKey: Boolean(payload.sshPublicKey)
         }

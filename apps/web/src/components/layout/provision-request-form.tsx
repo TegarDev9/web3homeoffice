@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { LoaderCircle, Rocket } from "lucide-react";
 
+import {
+  DEFAULT_PROVISION_OS,
+  DEFAULT_PROVISION_TEMPLATE,
+  type ProvisionOs,
+  type ProvisionTemplate
+} from "@web3homeoffice/shared";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +21,8 @@ type ProvisionRequestFormProps = {
 };
 
 export function ProvisionRequestForm({ defaultRegion }: ProvisionRequestFormProps) {
-  const [template, setTemplate] = useState<"vps-base" | "rpc-placeholder">("vps-base");
+  const [template, setTemplate] = useState<ProvisionTemplate>(DEFAULT_PROVISION_TEMPLATE);
+  const [os, setOs] = useState<ProvisionOs>(DEFAULT_PROVISION_OS);
   const [region, setRegion] = useState(defaultRegion);
   const [sshPublicKey, setSshPublicKey] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,6 +40,7 @@ export function ProvisionRequestForm({ defaultRegion }: ProvisionRequestFormProp
         },
         body: JSON.stringify({
           planTemplate: template,
+          os,
           region,
           sshPublicKey: sshPublicKey.trim() || undefined
         })
@@ -62,13 +71,27 @@ export function ProvisionRequestForm({ defaultRegion }: ProvisionRequestFormProp
       <CardContent className="space-y-3">
         <div className="space-y-1">
           <Label htmlFor="template">Template</Label>
-          <Select value={template} onValueChange={(value) => setTemplate(value as "vps-base" | "rpc-placeholder")}>
+          <Select value={template} onValueChange={(value) => setTemplate(value as ProvisionTemplate)}>
             <SelectTrigger id="template">
               <SelectValue placeholder="Select template" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="vps-base">VPS Base</SelectItem>
               <SelectItem value="rpc-placeholder">RPC Placeholder</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="os">OS</Label>
+          <Select value={os} onValueChange={(value) => setOs(value as ProvisionOs)}>
+            <SelectTrigger id="os">
+              <SelectValue placeholder="Select OS" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ubuntu">Ubuntu</SelectItem>
+              <SelectItem value="debian">Debian</SelectItem>
+              <SelectItem value="kali">Kali Linux</SelectItem>
             </SelectContent>
           </Select>
         </div>

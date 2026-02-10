@@ -80,6 +80,9 @@ Web app runs on `http://localhost:3000`.
 - `TENCENT_REGION` (default `ap-singapore`)
 - `LIGHTHOUSE_BUNDLE_ID`
 - `LIGHTHOUSE_BLUEPRINT_ID`
+- `LIGHTHOUSE_BLUEPRINT_ID_UBUNTU` (optional override, defaults to `LIGHTHOUSE_BLUEPRINT_ID`)
+- `LIGHTHOUSE_BLUEPRINT_ID_DEBIAN` (optional override, defaults to `LIGHTHOUSE_BLUEPRINT_ID`)
+- `LIGHTHOUSE_BLUEPRINT_ID_KALI` (optional override, defaults to `LIGHTHOUSE_BLUEPRINT_ID`)
 - `LIGHTHOUSE_ZONE`
 - `LIGHTHOUSE_INSTANCE_TYPE`
 
@@ -110,6 +113,12 @@ Web app runs on `http://localhost:3000`.
 5. Worker bootstraps via Tencent TAT command.
 6. On failure worker retries up to 3 times with backoff (1m, 5m, 15m).
 7. Worker updates job (`running -> pending|provisioned|failed`) and appends logs.
+
+### Auto-install on subscription activation
+
+- Checkout now arms an auto-install preference (`template` + `os`) for a short window.
+- When webhook status becomes `active`, app creates one `subscription_auto` provision job (idempotent by `subscription_id`).
+- Desktop checkout can choose `Debian`/`Ubuntu`/`Kali` + package (`VPS Base`/`Server RPC`); mobile uses default `Ubuntu + VPS Base`.
 
 ## Deploy
 
