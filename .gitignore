@@ -9,7 +9,6 @@ coverage
 .env
 .env.*
 !.env.example
-pnpm-lock.yaml
 apps/web/.next
 apps/web/coverage
 apps/web/.open-next

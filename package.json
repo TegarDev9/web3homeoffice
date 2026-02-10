@@ -12,11 +12,12 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter @web3homeoffice/web test",
     "smoke": "pnpm --filter @web3homeoffice/web test:smoke && pnpm -r typecheck",
+    "ci:verify-lockfile": "node scripts/verify-lockfile.mjs",
     "cf:web:build": "pnpm --filter @web3homeoffice/web run cf:build",
-    "cf:web:build:ci": "pnpm install --frozen-lockfile && pnpm --filter @web3homeoffice/web run cf:build",
+    "cf:web:build:ci": "pnpm run ci:verify-lockfile && pnpm install --frozen-lockfile && pnpm --filter @web3homeoffice/web run cf:build",
     "cf:web:preview": "pnpm --filter @web3homeoffice/web run cf:preview",
     "cf:web:deploy": "pnpm --filter @web3homeoffice/web run cf:deploy",
-    "cf:web:deploy:ci": "pnpm install --frozen-lockfile && pnpm --filter @web3homeoffice/web run cf:deploy",
+    "cf:web:deploy:ci": "pnpm run ci:verify-lockfile && pnpm install --frozen-lockfile && pnpm --filter @web3homeoffice/web run cf:deploy",
     "cf:web:typegen": "pnpm --filter @web3homeoffice/web run cf:typegen"
   }
 }

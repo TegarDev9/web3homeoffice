@@ -43,6 +43,7 @@ This repo already includes Cloudflare/OpenNext setup:
   - `cf:preview`
   - `cf:deploy`
 - Root aliases in `package.json`:
+  - `pnpm ci:verify-lockfile`
   - `pnpm cf:web:build`
   - `pnpm cf:web:build:ci`
   - `pnpm cf:web:preview`
@@ -54,6 +55,7 @@ This repo already includes Cloudflare/OpenNext setup:
 Run from repository root:
 
 ```bash
+pnpm run ci:verify-lockfile
 pnpm install
 pnpm --filter @web3homeoffice/web test
 pnpm --filter @web3homeoffice/web build
@@ -89,6 +91,7 @@ pnpm install --frozen-lockfile
 ```
 
 Do not use `bun install` for this workspace.
+`pnpm-lock.yaml` must be committed to git and not ignored.
 
 - Build command:
 
@@ -211,19 +214,30 @@ Expected result: `401 Unauthorized`.
   - build step starts with `pnpm run cf:web:build:ci`
   - OpenNext banner appears and build completes without `opennextjs-cloudflare: not found`
 
-### Case 2: Runtime route fails due missing env variable
+### Case 2: `ERR_PNPM_NO_LOCKFILE` during install
+
+- Failure signature:
+  - install step logs `ERR_PNPM_NO_LOCKFILE`
+  - message includes `pnpm-lock.yaml is absent`
+- Cause: `pnpm-lock.yaml` is missing in Git clone because it was not committed (or was ignored).
+- Fix:
+  - Ensure `.gitignore` does not exclude `pnpm-lock.yaml`.
+  - Commit `pnpm-lock.yaml`.
+  - Run `pnpm run ci:verify-lockfile` locally before pushing.
+
+### Case 3: Runtime route fails due missing env variable
 
 - Cause: Variable not configured in Cloudflare environment.
 - Fix: Add the variable (or secret) in Worker environment settings, then redeploy.
 
-### Case 3: OTP redirect mismatch
+### Case 4: OTP redirect mismatch
 
 - Cause: Supabase Auth URL mismatch.
 - Fix:
   - Ensure `NEXT_PUBLIC_APP_URL` matches production domain.
   - Ensure Supabase allowed redirect URLs include `/dashboard`.
 
-### Case 4: Creem webhook verification fails
+### Case 5: Creem webhook verification fails
 
 - Cause: Secret/header/algo mismatch between Creem and Worker env.
 - Fix:
@@ -231,7 +245,7 @@ Expected result: `401 Unauthorized`.
   - Verify `CREEM_WEBHOOK_SIGNATURE_HEADER`
   - Verify `CREEM_WEBHOOK_SIGNATURE_ALGORITHM`
 
-### Case 5: Node compatibility/runtime issue
+### Case 6: Node compatibility/runtime issue
 
 - Cause: Worker compatibility mismatch.
 - Fix:

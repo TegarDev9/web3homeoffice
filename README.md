@@ -132,6 +132,7 @@ pnpm install --frozen-lockfile
 ```
 
 - Use pnpm install, not `bun install`. This monorepo keeps app dependencies in workspace packages, not root dependencies.
+- `pnpm-lock.yaml` must be committed to git and not ignored, or `--frozen-lockfile` will fail in CI.
 
 - Build command:
 
@@ -189,6 +190,7 @@ https://<your-domain>/api/billing/webhook
 #### 5) Local pre-deploy validation
 
 ```bash
+pnpm run ci:verify-lockfile
 pnpm --filter @web3homeoffice/web test
 pnpm --filter @web3homeoffice/web build
 pnpm --filter @web3homeoffice/web run cf:build
@@ -216,6 +218,7 @@ pnpm --filter @web3homeoffice/provisioner start
 - `pnpm typecheck` - typecheck all workspace packages
 - `pnpm test` - run web tests
 - `pnpm smoke` - run smoke test + workspace typecheck
+- `pnpm ci:verify-lockfile` - fail CI early if `pnpm-lock.yaml` is missing, ignored, or untracked
 - `pnpm cf:web:build` - build Cloudflare OpenNext output for `apps/web`
 - `pnpm cf:web:build:ci` - CI-safe Cloudflare build (installs workspace deps, then runs OpenNext build)
 - `pnpm cf:web:preview` - local Cloudflare preview for `apps/web`
@@ -232,6 +235,12 @@ pnpm --filter @web3homeoffice/provisioner start
   - Set Install command to `pnpm install --frozen-lockfile`
   - Set Build command to `pnpm run cf:web:build:ci`
   - Set Deploy command to `pnpm run cf:web:deploy:ci`
+- Failure signature: `ERR_PNPM_NO_LOCKFILE Cannot install with "frozen-lockfile" because pnpm-lock.yaml is absent`
+- Root cause: `pnpm-lock.yaml` is missing in the Git clone (not committed or still ignored).
+- Fix:
+  - Remove lockfile ignore rules (if present).
+  - Commit `pnpm-lock.yaml`.
+  - Run `pnpm run ci:verify-lockfile` locally before pushing.
 
 ## Testing
 
