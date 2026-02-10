@@ -1,14 +1,34 @@
 # Cloudflare Deployment Guide for Web3 Home Office
 
-## 1) Scope
+## 1) Platform Decision (Read This First)
 
-This guide deploys only `apps/web` to **Cloudflare Workers Builds** using `@opennextjs/cloudflare`.
+Deploy the full app (`apps/web`) to **Cloudflare Workers Builds** using `@opennextjs/cloudflare`.
 
-- `apps/web` runs on Cloudflare Workers.
-- `apps/provisioner` stays deployed separately on Tencent VM.
-- No long-running provisioning process should run inside the Worker.
+- `apps/web` is a full-stack Next.js App Router app with server routes (`app/api/**`), auth/session checks, billing webhook flows, and admin/provisioning routes.
+- `apps/provisioner` remains a separate worker process on Tencent VM.
+- Cloudflare Pages is valid for **static exports only**. It is not the correct primary target for this repo's full feature set.
 
-## 2) Architecture Snapshot
+Limits and pricing assumptions in this guide were verified from official docs on **February 10, 2026**.
+
+## 2) Free-Tier Reality Check (Cloudflare)
+
+| Item | Free-tier behavior | Why it matters here |
+|---|---|---|
+| Pages static asset requests | Free and unlimited (when request does not invoke Functions) | Good for static-only sites |
+| Pages Functions requests | Count against Workers free quota | Not unlimited for server logic |
+| Workers free requests | `100,000` requests/day, shared quota; resets at midnight UTC | Full-stack traffic must be monitored |
+| Pages builds (Git-integrated) | `500` builds/month | High commit volume can hit build cap |
+
+Interpretation: for this repo, "unlimited free" is only true for static assets. Full-stack Next.js is **free within quotas**, not unlimited.
+
+## 3) Scope
+
+This guide deploys only `apps/web` to Cloudflare Workers Builds.
+
+- In scope: Next.js web app runtime and API routes on Cloudflare Workers.
+- Out of scope: migrating app architecture to Pages static export, Terraform/stateful infra changes.
+
+## 4) Architecture Snapshot
 
 ```text
 User Browser
@@ -22,7 +42,7 @@ Tencent Provisioner (apps/provisioner on VM)
 
 `/api/provision/request` only inserts queue jobs. Provision execution remains external (Tencent worker).
 
-## 3) Prerequisites
+## 5) Prerequisites
 
 - Cloudflare account with Workers Builds enabled
 - Git provider connected to Cloudflare (GitHub/GitLab)
@@ -32,7 +52,7 @@ Tencent Provisioner (apps/provisioner on VM)
 - Creem credentials/webhook secret ready
 - Custom domain prepared (optional but recommended)
 
-## 4) Confirm Repo is Cloudflare-Ready (Already Implemented)
+## 6) Confirm Repo Is Workers-Ready (Already Implemented)
 
 This repo already includes Cloudflare/OpenNext setup:
 
@@ -50,7 +70,9 @@ This repo already includes Cloudflare/OpenNext setup:
   - `pnpm cf:web:deploy`
   - `pnpm cf:web:deploy:ci`
 
-## 5) Local Preflight Before First Deploy
+## 7) Quick Deploy Path (Workers Builds)
+
+### Step 1: Local preflight
 
 Run from repository root:
 
@@ -68,42 +90,41 @@ Expected outcomes:
 - Next.js production build succeeds
 - OpenNext preview starts successfully
 
-## 6) Cloudflare Workers Builds Project Setup
+### Step 2: Configure Workers Builds project in Cloudflare
 
-In Cloudflare Dashboard:
+In Cloudflare dashboard:
 
-1. Create a new **Workers Builds** project from your Git repository.
-2. Set production branch (`main` or your selected release branch).
+1. Create a **Workers Builds** project from your Git repository.
+2. Set production branch (`main` or selected release branch).
 3. Set **Root directory** to:
 
 ```text
 .
 ```
 
-Do not set root to `apps/web`, because this is a monorepo and `apps/web` depends on `packages/shared`.
+Do not set root to `apps/web`, because this monorepo depends on `packages/shared`.
 
 4. Set install/build/deploy commands:
 
-- Install command:
+Install command:
 
 ```bash
 pnpm install --frozen-lockfile
 ```
 
-Do not use `bun install` for this workspace.
-`pnpm-lock.yaml` must be committed to git and not ignored.
-
-- Build command:
+Build command:
 
 ```bash
 pnpm run cf:web:build:ci
 ```
 
-- Deploy command:
+Deploy command:
 
 ```bash
 pnpm run cf:web:deploy:ci
 ```
+
+Do not use `bun install` for this workspace. `pnpm-lock.yaml` must be committed and not ignored.
 
 5. Set Build Watch Paths:
 
@@ -113,9 +134,9 @@ pnpm run cf:web:deploy:ci
 - `pnpm-workspace.yaml`
 - `package.json`
 
-## 7) Environment Variables and Secrets
+### Step 3: Configure environment variables and secrets
 
-Configure variables in Cloudflare for the Worker environment.
+Set these in Cloudflare Worker environment:
 
 | Variable | Required | Secret? | Used by | Example / Notes |
 |---|---|---|---|---|
@@ -136,30 +157,30 @@ Configure variables in Cloudflare for the Worker environment.
 | `TELEGRAM_BOT_TOKEN` | No | Yes | Telegram verify endpoint | Needed only if Telegram linking is enabled |
 
 > [!WARNING]
-> Store sensitive values as Cloudflare **Secrets**, not plaintext environment variables.
+> Store sensitive values as Cloudflare **Secrets**, not plaintext variables.
 
-## 8) Domain and Integration Wiring
+### Step 4: Wire domain and integrations
 
-1. Attach custom domain to your Worker in Cloudflare.
-2. Set `NEXT_PUBLIC_APP_URL` to your final production domain.
-3. Supabase Auth configuration:
-   - Add production site URL
-   - Add redirect URL(s), including OTP redirect to `/dashboard`
-4. Creem webhook configuration:
+1. Attach custom domain to Worker.
+2. Set `NEXT_PUBLIC_APP_URL` to final production domain.
+3. Supabase Auth:
+   - Add production site URL.
+   - Add redirect URL(s), including OTP redirect to `/dashboard`.
+4. Creem webhook:
    - Endpoint: `https://<your-domain>/api/billing/webhook`
-   - Ensure webhook signature header + algorithm match:
+   - Ensure values match:
      - `CREEM_WEBHOOK_SIGNATURE_HEADER`
      - `CREEM_WEBHOOK_SIGNATURE_ALGORITHM`
 
 > [!WARNING]
-> If Supabase redirect URLs do not match your production domain exactly, OTP login can fail or redirect incorrectly.
+> If Supabase redirect URLs do not match production domain exactly, OTP login may fail or redirect incorrectly.
 
-## 9) Deploy Flow (First Release and Updates)
+### Step 5: Deploy and update flow
 
 First release:
 
 1. Push configured branch to Git.
-2. Workers Builds executes build/deploy pipeline.
+2. Workers Builds executes install/build/deploy pipeline.
 3. Verify deployment status in Cloudflare dashboard.
 
 Subsequent updates:
@@ -172,9 +193,9 @@ Optional local/manual fallback:
 pnpm cf:web:deploy
 ```
 
-## 10) Post-Deploy Smoke Checklist
+## 8) Post-Deploy Smoke Checklist
 
-Manual checks after deployment:
+Manual checks:
 
 1. `GET /` loads successfully.
 2. OTP login works and redirects to `/dashboard`.
@@ -194,7 +215,16 @@ curl -i -X POST "https://<your-domain>/api/billing/webhook" ^
 
 Expected result: `401 Unauthorized`.
 
-## 11) Troubleshooting
+## 9) Stay on Free Tier (Guardrails)
+
+1. Treat Workers requests as a daily budget (`100,000`/day on Free).
+2. Remember free request quota resets at midnight UTC.
+3. Reduce noisy production logs and debug-only traffic.
+4. Monitor request usage and build counts in Cloudflare dashboard daily/weekly.
+5. Keep synthetic checks/load tests controlled so they do not consume most of daily quota.
+6. If sustained traffic exceeds free quota, upgrade to Workers Paid before user-facing failures.
+
+## 10) Troubleshooting
 
 ### Case 1: Build fails because workspace package is missing
 
@@ -228,7 +258,7 @@ Expected result: `401 Unauthorized`.
 ### Case 3: Runtime route fails due missing env variable
 
 - Cause: Variable not configured in Cloudflare environment.
-- Fix: Add the variable (or secret) in Worker environment settings, then redeploy.
+- Fix: Add variable/secret in Worker environment settings, then redeploy.
 
 ### Case 4: OTP redirect mismatch
 
@@ -241,9 +271,9 @@ Expected result: `401 Unauthorized`.
 
 - Cause: Secret/header/algo mismatch between Creem and Worker env.
 - Fix:
-  - Verify `CREEM_WEBHOOK_SECRET`
-  - Verify `CREEM_WEBHOOK_SIGNATURE_HEADER`
-  - Verify `CREEM_WEBHOOK_SIGNATURE_ALGORITHM`
+  - Verify `CREEM_WEBHOOK_SECRET`.
+  - Verify `CREEM_WEBHOOK_SIGNATURE_HEADER`.
+  - Verify `CREEM_WEBHOOK_SIGNATURE_ALGORITHM`.
 
 ### Case 6: Node compatibility/runtime issue
 
@@ -252,10 +282,53 @@ Expected result: `401 Unauthorized`.
   - Confirm `nodejs_compat` is enabled in `apps/web/wrangler.jsonc`.
   - Keep `compatibility_date` current.
 
-## 12) Rollback and Safety
+### Case 7: "I expected Pages unlimited free, but hit quota"
+
+- Symptom:
+  - Full-stack requests fail or throttle after daily volume spikes.
+  - Static assets still serve, but dynamic endpoints are constrained.
+- Cause:
+  - "Unlimited" applies to static asset requests.
+  - Requests invoking Functions/Workers consume Workers quota.
+- Fix:
+  - Distinguish static traffic from function/worker invocations.
+  - Keep this app on Workers for full features and monitor daily request usage.
+  - Upgrade Workers plan when sustained traffic exceeds free tier.
+
+## 11) Rollback and Safety
 
 - Rollback strategy: redeploy last known-good Git commit.
 - After rollback, verify webhook auditability:
   - confirm events continue to be recorded in `webhook_events`.
 - This web deployment should not modify Terraform/stateful infrastructure.
 - Provisioning execution continues to run only on Tencent provisioner service.
+
+## 12) Appendix: If You Still Want Cloudflare Pages Static-Only
+
+Use this only for a separate static site use case. It is not a full replacement for this repo's current web app runtime.
+
+### What breaks on static export for this repo
+
+- Auth/session-dependent pages (server-side user/subscription checks).
+- Route handlers under `app/api/**`.
+- Billing, provisioning, and admin flows that require server runtime.
+
+### Why
+
+Current Next.js static export mode does not support many server/runtime features used by this app (for example: runtime Route Handlers, cookies/session-driven server logic, and middleware-like request-time behavior).
+
+### Safe path
+
+1. Keep full app (`apps/web`) on Workers.
+2. Optionally create a separate static marketing app for Pages, then link to Worker-hosted app routes for authenticated/product features.
+
+For static-only Next.js on Pages, use Cloudflare's dedicated static guide and ensure the app is intentionally built for static export.
+
+## 13) References (Official Docs)
+
+- Cloudflare Pages limits: https://developers.cloudflare.com/pages/platform/limits/
+- Cloudflare Pages Functions pricing: https://developers.cloudflare.com/pages/functions/pricing/
+- Cloudflare Workers pricing: https://developers.cloudflare.com/workers/platform/pricing/
+- Cloudflare Next.js on Pages guide index: https://developers.cloudflare.com/pages/framework-guides/nextjs/
+- Cloudflare static Next.js Pages guide: https://developers.cloudflare.com/pages/framework-guides/nextjs/deploy-a-static-nextjs-site/
+- Next.js static export docs (unsupported features): https://nextjs.org/docs/14/app/building-your-application/deploying/static-exports
