@@ -1,15 +1,16 @@
+import React from "react";
 import Link from "next/link";
-import { Bell, BookOpen, Box, CreditCard, Home, Shield } from "lucide-react";
+import { BookOpen, Compass, CreditCard, Home, LifeBuoy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 const links = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/app", label: "Hub", icon: Box },
+  { href: "/#how", label: "How", icon: Compass },
+  { href: "/#plans", label: "Plans", icon: CreditCard },
+  { href: "/#faq", label: "FAQ", icon: LifeBuoy },
   { href: "/academy", label: "Academy", icon: BookOpen },
-  { href: "/dashboard", label: "Dashboard", icon: Bell },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/admin", label: "Admin", icon: Shield }
+  { href: "/billing", label: "Billing", icon: CreditCard }
 ];
 
 export function MarketingHeader() {
@@ -19,7 +20,7 @@ export function MarketingHeader() {
         <Link href="/" className="text-base font-semibold text-text">
           Web3 Home Office
         </Link>
-        <nav className="hidden items-center gap-2 md:flex">
+        <nav className="hidden items-center gap-2 lg:flex">
           {links.map((link) => {
             const Icon = link.icon;
             return (
@@ -32,6 +33,22 @@ export function MarketingHeader() {
             );
           })}
         </nav>
+        <div className="hidden items-center gap-2 sm:flex">
+          <Button variant="secondary" size="sm" asChild>
+            <Link href="/billing">View plans</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/#auth">Start free</Link>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2 sm:hidden">
+          <Button variant="secondary" size="sm" asChild>
+            <Link href="/billing">Plans</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/#auth">Start</Link>
+          </Button>
+        </div>
       </div>
     </header>
   );
