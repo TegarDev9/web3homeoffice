@@ -123,18 +123,26 @@ This repo uses `@opennextjs/cloudflare` for Next.js App Router deployment on Clo
 - Set **Production branch** (for example `main`).
 - Set **Root directory** to repository root (`.`), not `apps/web`, because `apps/web` imports `packages/shared`.
 
-#### 2) Build + deploy commands
+#### 2) Install + build + deploy commands
+
+- Install command (required):
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+- Use pnpm install, not `bun install`. This monorepo keeps app dependencies in workspace packages, not root dependencies.
 
 - Build command:
 
 ```bash
-pnpm --filter @web3homeoffice/web run cf:build
+pnpm run cf:web:build:ci
 ```
 
 - Deploy command:
 
 ```bash
-pnpm --filter @web3homeoffice/web run cf:deploy
+pnpm run cf:web:deploy:ci
 ```
 
 - Recommended Build Watch Paths:
@@ -184,6 +192,7 @@ https://<your-domain>/api/billing/webhook
 pnpm --filter @web3homeoffice/web test
 pnpm --filter @web3homeoffice/web build
 pnpm --filter @web3homeoffice/web run cf:build
+pnpm run cf:web:build:ci
 ```
 
 ### Tencent worker (`apps/provisioner`)
@@ -208,9 +217,21 @@ pnpm --filter @web3homeoffice/provisioner start
 - `pnpm test` - run web tests
 - `pnpm smoke` - run smoke test + workspace typecheck
 - `pnpm cf:web:build` - build Cloudflare OpenNext output for `apps/web`
+- `pnpm cf:web:build:ci` - CI-safe Cloudflare build (installs workspace deps, then runs OpenNext build)
 - `pnpm cf:web:preview` - local Cloudflare preview for `apps/web`
 - `pnpm cf:web:deploy` - deploy `apps/web` Worker using OpenNext CLI
+- `pnpm cf:web:deploy:ci` - CI-safe Cloudflare deploy (installs workspace deps, then runs OpenNext deploy)
 - `pnpm cf:web:typegen` - generate Cloudflare env type definitions
+
+## Cloudflare build troubleshooting
+
+- Failure signature: `bun install` + `No packages!` + `node_modules missing` + `opennextjs-cloudflare: not found`
+- Root cause: Workers Builds install command is misconfigured, so workspace dependencies are never installed.
+- Fix:
+  - Set Root directory to `.`
+  - Set Install command to `pnpm install --frozen-lockfile`
+  - Set Build command to `pnpm run cf:web:build:ci`
+  - Set Deploy command to `pnpm run cf:web:deploy:ci`
 
 ## Testing
 

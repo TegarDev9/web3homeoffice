@@ -44,8 +44,10 @@ This repo already includes Cloudflare/OpenNext setup:
   - `cf:deploy`
 - Root aliases in `package.json`:
   - `pnpm cf:web:build`
+  - `pnpm cf:web:build:ci`
   - `pnpm cf:web:preview`
   - `pnpm cf:web:deploy`
+  - `pnpm cf:web:deploy:ci`
 
 ## 5) Local Preflight Before First Deploy
 
@@ -78,18 +80,26 @@ In Cloudflare Dashboard:
 
 Do not set root to `apps/web`, because this is a monorepo and `apps/web` depends on `packages/shared`.
 
-4. Set build/deploy commands:
+4. Set install/build/deploy commands:
+
+- Install command:
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+Do not use `bun install` for this workspace.
 
 - Build command:
 
 ```bash
-pnpm --filter @web3homeoffice/web run cf:build
+pnpm run cf:web:build:ci
 ```
 
 - Deploy command:
 
 ```bash
-pnpm --filter @web3homeoffice/web run cf:deploy
+pnpm run cf:web:deploy:ci
 ```
 
 5. Set Build Watch Paths:
@@ -185,8 +195,21 @@ Expected result: `401 Unauthorized`.
 
 ### Case 1: Build fails because workspace package is missing
 
-- Cause: Wrong Workers Builds root directory.
-- Fix: Set root directory to `.` (repo root), not `apps/web`.
+- Failure signature:
+  - dependency step runs `bun install`
+  - log contains `No packages! Deleted empty lockfile`
+  - build fails with `opennextjs-cloudflare: not found`
+  - pnpm warns `Local package.json exists, but node_modules missing`
+- Cause: Workers Builds install command is misconfigured, so workspace dependencies were not installed.
+- Fix:
+  - Set root directory to `.` (repo root), not `apps/web`.
+  - Set install command to `pnpm install --frozen-lockfile`.
+  - Set build command to `pnpm run cf:web:build:ci`.
+  - Set deploy command to `pnpm run cf:web:deploy:ci`.
+- Expected successful log signals:
+  - dependency step shows `pnpm install --frozen-lockfile`
+  - build step starts with `pnpm run cf:web:build:ci`
+  - OpenNext banner appears and build completes without `opennextjs-cloudflare: not found`
 
 ### Case 2: Runtime route fails due missing env variable
 
