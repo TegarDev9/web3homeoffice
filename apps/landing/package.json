@@ -1,0 +1,25 @@
+{
+  "name": "@web3homeoffice/landing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start",
+    "cf:deploy": "node ../../scripts/deploy-landing-pages.mjs",
+    "cf:deploy:ci": "node ../../scripts/deploy-landing-pages.mjs --ci"
+  },
+  "dependencies": {
+    "next": "^15.5.3",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.63.0"
+  }
+}

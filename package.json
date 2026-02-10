@@ -18,7 +18,11 @@
     "cf:web:preview": "pnpm --filter @web3homeoffice/web run cf:preview",
     "cf:web:deploy": "pnpm --filter @web3homeoffice/web run cf:deploy",
     "cf:web:deploy:ci": "pnpm run ci:verify-lockfile && pnpm install --frozen-lockfile && pnpm --filter @web3homeoffice/web run cf:deploy",
-    "cf:web:typegen": "pnpm --filter @web3homeoffice/web run cf:typegen"
+    "cf:web:typegen": "pnpm --filter @web3homeoffice/web run cf:typegen",
+    "cf:landing:build": "pnpm --filter @web3homeoffice/landing run build",
+    "cf:landing:deploy": "pnpm --filter @web3homeoffice/landing run cf:deploy",
+    "cf:landing:deploy:ci": "pnpm run ci:verify-lockfile && pnpm install --frozen-lockfile && pnpm --filter @web3homeoffice/landing run build && pnpm --filter @web3homeoffice/landing run cf:deploy:ci",
+    "cf:stack:deploy:ci": "pnpm run cf:web:deploy:ci && pnpm run cf:landing:deploy:ci"
   }
 }
 
